@@ -2,6 +2,8 @@ import sys
 import glob
 import os
 import math
+import zlib
+from collections import deque
 
 class archiver:
     @staticmethod
@@ -27,6 +29,7 @@ class archiver:
 
     @staticmethod
     def main(sources: list[str], output):
+        output = output.replace("\\","/")
         print(f"Archiving to {output}:")
 
         with open(output, "wb") as archive:
@@ -59,8 +62,6 @@ class archiver:
                         archive.write(b'\x00' * padding)
 
         print("Done")
-
-from collections import deque
 
 class extractor:
     DEBUG = False
@@ -160,11 +161,8 @@ if __name__ == "__main__":
     if archive:
         if (outname is None):
             print("No output name specified, defaulting to `archive.gtar`")
-            outname = "archive.gtar"
-
-        if not ("." in outname):
-            print("No file extension specified; '.gtar' will be appended to output")
-            outname += ".gtar"
+            outname = "archive"
+    outname += ".gzar"
     print()
     if archive:
         if not sources:
