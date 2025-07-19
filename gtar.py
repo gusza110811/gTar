@@ -33,6 +33,7 @@ class archiver:
         print(f"Archiving to {output}:")
 
         with open(output, "wb") as archive:
+            archive.write(b"GTAR\x00")
             for source in sources:
                 if os.path.isfile(source):
                     with open(source, "rb") as sourcefile:
@@ -71,6 +72,8 @@ class extractor:
         with open(source, 'rb') as archivefile:
             print(f"Extracting {source}")
             archive = deque(archivefile.read())  # use deque here
+            magic = [archive.popleft() for _ in range(5)]
+            if bytes(magic) != b"GTAR\x00": sys.exit("Not a gTar file")
             while True:
                 try:
                     archive.popleft()  # skip Header marker
@@ -100,7 +103,9 @@ class extractor:
                     print(data)
                     continue
                 print(f"Discovered {filename}")
-                os.makedirs("/".join(filename.split("/")[:-1]), exist_ok=True)
+                path = "/".join(filename.split("/")[:-1])
+                if path:
+                    os.makedirs(path, exist_ok=True)
                 with open(filename,'wb') as file:
                     file.write(data)
 
@@ -162,7 +167,7 @@ if __name__ == "__main__":
         if (outname is None):
             print("No output name specified, defaulting to `archive.gtar`")
             outname = "archive"
-    outname += ".gzar"
+        outname += ".gtar"
     print()
     if archive:
         if not sources:
