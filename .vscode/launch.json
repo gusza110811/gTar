@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["-e", "-s" , "archive.gtar"]
+            "args": ["-as", "programming/*"]
         }
     ]
 }

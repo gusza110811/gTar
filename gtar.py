@@ -1,7 +1,6 @@
 import sys
 import glob
 import os
-import time
 import math
 
 class archiver:
@@ -34,6 +33,9 @@ class archiver:
             for source in sources:
                 if os.path.isfile(source):
                     with open(source, "rb") as sourcefile:
+                        source = source.replace("\\","/")
+                        source = source.replace("C:","")
+                        if source.startswith("/"): source = source[1:]
                         data = sourcefile.read()
                         filelength = len(data)
                         clustersize, clustercount = archiver.find_optimal_cluster_size(filelength)
@@ -58,33 +60,35 @@ class archiver:
 
         print("Done")
 
+from collections import deque
+
 class extractor:
-    DEBUG=True
+    DEBUG = False
+
     @staticmethod
     def main(source):
-        with open(source,'rb') as archivefile:
-            archive = bytearray(archivefile.read())
+        with open(source, 'rb') as archivefile:
+            print(f"Extracting {source}")
+            archive = deque(archivefile.read())  # use deque here
             while True:
                 try:
-                    archive.pop(0) # skip Header marker
+                    archive.popleft()  # skip Header marker
                 except IndexError:
                     break
-                clustersize = archive.pop(0)
-                clustercountbytes = [archive.pop(0),archive.pop(0),archive.pop(0),archive.pop(0)]
-                clustercount = int.from_bytes(bytes(clustercountbytes))
-                padding = archive.pop(0)
-                filenamelength = archive.pop(0)
-                filename = ""
-                for i in range(filenamelength):
-                    filename += chr(archive.pop(0))
-                data = b""
-                for i in range((clustercount*clustersize)-padding):
-                    data += archive.pop(0).to_bytes(1)
-                
-                for i in range(padding):
-                    archive.pop(0)
 
-                # Debug only
+                clustersize = archive.popleft()
+                clustercountbytes = [archive.popleft() for _ in range(4)]
+                clustercount = int.from_bytes(bytes(clustercountbytes))
+                padding = archive.popleft()
+                filenamelength = archive.popleft()
+
+                filename = ''.join(chr(archive.popleft()) for _ in range(filenamelength))
+                data = bytes(archive.popleft() for _ in range((clustercount * clustersize) - padding))
+                
+                # Discard padding
+                for _ in range(padding):
+                    archive.popleft()
+
                 if extractor.DEBUG:
                     print(f"csize: {clustersize}")
                     print(f"cnum: {clustercount}")
@@ -94,7 +98,10 @@ class extractor:
                     print("data:")
                     print(data)
                     continue
-
+                print(f"Discovered {filename}")
+                os.makedirs("/".join(filename.split("/")[:-1]), exist_ok=True)
+                with open(filename,'wb') as file:
+                    file.write(data)
 
 if __name__ == "__main__":
     args = sys.argv[1:]
